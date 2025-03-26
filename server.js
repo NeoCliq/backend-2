@@ -31,69 +31,56 @@ app.post("/register", async (req, res) => {
   const { email, password, name, phone } = req.body;
 
   try {
-    // Tentar criar o usuário no Supabase Auth
+    // Criar usuário no Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
     });
 
     if (authError) {
-      if (authError.message.includes("duplicate")) {
-        // Se for erro de duplicação, logue e faça o login
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) return res.status(400).json({ error: error.message });
-
-        return res.json({
-          message: "Usuário já existe, login realizado com sucesso!",
-          data,
-        });
-      }
-      throw authError; // Caso o erro não seja de duplicação
+      throw authError;
     }
 
-    const userId = authData.user?.id; // Obtendo o ID do usuário criado no auth
+    const userId = authData.user?.id; // Verifica se o ID existe
 
     if (!userId) {
       return res.status(400).json({ error: "Erro ao obter ID do usuário." });
     }
 
-    console.log(`Usuário registrado com ID: ${userId}`);
-
     // Verificar se o usuário já existe na tabela 'users'
-    const { data: existingUser, error: checkError } = await supabase
+    const { data: existingUser, error: userCheckError } = await supabase
       .from("users")
       .select("id")
       .eq("id", userId)
-      .single(); // Busca um único usuário com esse ID
+      .single(); // Garante que um único resultado será retornado
 
-    if (checkError) throw checkError;
+    if (userCheckError) {
+      throw userCheckError;
+    }
 
-    // Se o usuário já existe, não insira novamente
     if (existingUser) {
       return res
         .status(400)
-        .json({ error: "Usuário já registrado na tabela 'users'." });
+        .json({ error: "Usuário já existe na tabela 'users'." });
     }
 
-    // Inserir nome e telefone na tabela 'users' usando o ID do usuário criado no auth
-    const { error: dbError } = await supabase
-      .from("users")
-      .insert([{ id: userId, name, phone, email, created_at: new Date() }]);
+    // Inserir usuário na tabela 'users'
+    const { error: dbError } = await supabase.from("users").insert([
+      {
+        id: userId, // ID do usuário autenticado
+        name,
+        phone,
+        email,
+        created_at: new Date(),
+      },
+    ]);
 
-    if (dbError) throw dbError;
+    if (dbError) {
+      throw dbError;
+    }
 
     res.status(201).json({ message: "Usuário registrado com sucesso!" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});
-
-// Iniciar o servidor
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
 });
