@@ -26,6 +26,19 @@ app.post("/login", async (req, res) => {
   res.json(data);
 });
 
+const { data: existingAuthUser, error: authCheckError } =
+  await supabase.auth.admin.listUsers({
+    email,
+  });
+
+if (authCheckError) {
+  throw authCheckError;
+}
+
+if (existingAuthUser.users.length > 0) {
+  return res.status(400).json({ error: "Usuário já cadastrado no sistema." });
+}
+
 // Rota de cadastro
 app.post("/register", async (req, res) => {
   const { email, password, name, phone } = req.body;
@@ -52,7 +65,8 @@ app.post("/register", async (req, res) => {
     const { data: existingUsers, error: userCheckError } = await supabase
       .from("users")
       .select("id")
-      .eq("id", userId); // Removemos .single()
+      .eq("id", userId) // Removemos .single()
+      .maybeSingle();
 
     if (userCheckError) {
       throw userCheckError;
