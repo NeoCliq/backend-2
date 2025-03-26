@@ -26,24 +26,27 @@ app.post("/login", async (req, res) => {
   res.json(data);
 });
 
-const { data: existingAuthUser, error: authCheckError } =
-  await supabase.auth.admin.listUsers({
-    email,
-  });
-
-if (authCheckError) {
-  throw authCheckError;
-}
-
-if (existingAuthUser.users.length > 0) {
-  return res.status(400).json({ error: "Usuário já cadastrado no sistema." });
-}
-
 // Rota de cadastro
 app.post("/register", async (req, res) => {
   const { email, password, name, phone } = req.body;
 
   try {
+    // Verificar se o usuário já está registrado no Supabase Auth
+    const { data: existingAuthUser, error: authCheckError } =
+      await supabase.auth.admin.listUsers({
+        email,
+      });
+
+    if (authCheckError) {
+      throw authCheckError;
+    }
+
+    if (existingAuthUser.users.length > 0) {
+      return res
+        .status(400)
+        .json({ error: "Usuário já cadastrado no sistema." });
+    }
+
     // Criar usuário no Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
@@ -61,7 +64,6 @@ app.post("/register", async (req, res) => {
     }
 
     // Verificar se o usuário já existe na tabela 'users'
-    // Verificar se o usuário já existe na tabela 'users'
     const { data: existingUsers, error: userCheckError } = await supabase
       .from("users")
       .select("id")
@@ -73,7 +75,7 @@ app.post("/register", async (req, res) => {
     }
 
     // Se já existe pelo menos um usuário com esse ID, retorna erro
-    if (existingUsers.length > 0) {
+    if (existingUsers) {
       return res
         .status(400)
         .json({ error: "Usuário já existe na tabela 'users'." });
