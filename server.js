@@ -48,17 +48,18 @@ app.post("/register", async (req, res) => {
     }
 
     // Verificar se o usuário já existe na tabela 'users'
-    const { data: existingUser, error: userCheckError } = await supabase
+    // Verificar se o usuário já existe na tabela 'users'
+    const { data: existingUsers, error: userCheckError } = await supabase
       .from("users")
       .select("id")
-      .eq("id", userId)
-      .single(); // Garante que um único resultado será retornado
+      .eq("id", userId); // Removemos .single()
 
     if (userCheckError) {
       throw userCheckError;
     }
 
-    if (existingUser) {
+    // Se já existe pelo menos um usuário com esse ID, retorna erro
+    if (existingUsers.length > 0) {
       return res
         .status(400)
         .json({ error: "Usuário já existe na tabela 'users'." });
@@ -88,4 +89,8 @@ app.post("/register", async (req, res) => {
 const PORT = process.env.PORT || 3000; // Define a porta do servidor
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
+});
+
+app.get("/", (req, res) => {
+  res.send("API rodando...");
 });
